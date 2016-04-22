@@ -1,10 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+#include "main.h"
 
 int main(int argc, char **argv){
   
@@ -34,14 +28,15 @@ int main(int argc, char **argv){
   }
   printf("listening\n");
 
-
+  
+ manual(554);
+ manual(8554);
   addr_size = sizeof(clnt_addr);
   clnt_sock = accept(server_sock, (struct sockaddr *)&clnt_addr, &addr_size);
   if (clnt_sock == -1){
     printf("accept() error\n");
     return -1;
   }
-
   printf("Connection established");
 
 
@@ -51,4 +46,30 @@ int main(int argc, char **argv){
 
 
   return 0;
+}
+
+void manual(int port) {
+  printf("H.265 Streaming Server\n");
+  printf("    rtsp://%s:%i/<filename>\n", getmyip(), port);
+}
+
+char* getmyip(void){
+  int fd;
+  struct ifreq ifr;
+
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+  /* I want to get an IPv4 IP address */
+  ifr.ifr_addr.sa_family = AF_INET;
+
+  /* I want IP address attached to "eth0" */
+  strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+
+  ioctl(fd, SIOCGIFADDR, &ifr);
+
+  close(fd);
+
+  /* display result */
+  return inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
+
 }

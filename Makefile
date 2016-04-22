@@ -4,7 +4,7 @@ CCFLAGS=-std=c++0x -g -O0
 SRC_DIR=src
 OBJ_DIR=obj
 
-SRC = 1.cpp
+SRC = RTSPServer.cpp
 
 OBJ = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(SRC))
 
