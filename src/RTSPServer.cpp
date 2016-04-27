@@ -57,17 +57,25 @@ void RTSPServer::Accept(void){
   inet_ntop(AF_INET, &sa_cli.sin_addr.s_addr, clientIP, sizeof(clientIP));
   printf("%s\n", clientIP);
 
-  char buf[2048];
+  char read_buf[2048], write_buf[2048];
   int n;
-  
-  while ((n = read(connfd, buf, 256)) > 0){
-    printf("(debug) Got\n%s\n\n", buf);
+ RTSPParser *rtsppar = new RTSPParser(); 
+  while ((n = read(connfd, read_buf, sizeof(read_buf))) > 0){
+//    printf("(debug) Got\n%s\n\n", buf);
     
-    RTSPParser *rtsppar = new RTSPParser();
 
-    snprintf(buf, sizeof(buf), "%s", rtsppar->Renew(buf));
+    snprintf(write_buf, sizeof(write_buf), "%s", rtsppar->Renew(read_buf));
 
-    write(connfd, buf, strlen(buf));
+    if (strncmp(write_buf, rtsppar->Getnofile(), 29) == 0){
+      printf("no such file: %s\n", rtsppar->Getfiledir());
+      break;
+    }
+
+    printf("buf: %s\n", write_buf);
+
+    write(connfd, write_buf, strlen(write_buf));
+    memset(read_buf, 0, sizeof(read_buf));
+    memset(write_buf, 0, sizeof(write_buf));
   }
 
 }
@@ -108,7 +116,9 @@ void RTSPServer::Createurl(void){
   
   char newurl[100];
   /* display result */
-  sprintf(newurl, "rtsp://%s:%d/", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr), _port);
+  snprintf(newurl, sizeof(newurl), "rtsp://%s:%d/", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr), _port);
   
   _url = strdup(newurl);
 }
+
+

@@ -16,9 +16,10 @@ class RTSPParser {
   public:
     RTSPParser(void);
     ~RTSPParser(void);
+    void Createip();
     void Create(char *);
     char *Renew(char *);
-    char *Option(char *);
+    char *Options(char *);
     char *Describe(char *);
     char *Setup(char *);
     char *Teardown(char *);
@@ -30,13 +31,18 @@ class RTSPParser {
     char *Getfactor(void);
     char *Getfileurl(void);
     char *Getversion(void);
+    char *Getfiledir(void);
     char *Getcseq(void);
+    char *Getnofile(void);
+    char *GetSDP(void);
+
 
   
   private:
+    FILE *fp, *fp_index;
     char *_ret;
     char *_factor, *_fileurl, *_version;
-    char *_cseq, *_code;
+    char *_cseq, *_code, *_filedir, *_ip;
     unsigned short _session, _rtpport, _rtcpport;
 
 };

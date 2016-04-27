@@ -26,7 +26,7 @@ class RTSPServer {
   private:
     struct sockaddr_in _server_addr;
     int _listenfd, _port;
-    char* _url;
+    char *_url;
 
     void Createurl(void);
 

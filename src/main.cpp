@@ -24,11 +24,7 @@ int main(int argc, char **argv){
 
 
   printf("Accepting...\n");
-  while (1){
   rtspserver->Accept();
-  printf("Accepted.\n");
-  }
-  while(1);
   return 0;
 }
 
