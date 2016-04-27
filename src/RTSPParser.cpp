@@ -99,6 +99,28 @@ char *RTSPParser::Describe(char *rtsp){
 }
 
 char *RTSPParser::Setup(char *rtsp){
+  char buf[2048];
+  char *transport, *ptr;
+
+  transport = strtok_r(rtsp, "\r\n", &ptr);
+  transport = strtok_r( ptr, "\r\n", &ptr);
+  transport = strtok_r( ptr, "\r\n", &ptr);
+
+  // transport =  Transport: RTP/AVP;unicast;client_port=8000-8001
+
+
+  snprintf(buf, sizeof(buf), "%s %s\r\n"
+                             "%s\r\n"
+                             "Transport: %s\r\n"
+                             "Session: %s\r\n\r\n",
+                             _version,
+                             _code,
+                             _cseq,
+                             _cseq, // TODO: Transport
+                             _cseq); // TODO: Session
+  
+  _ret = strdup(buf);
+      
   return _ret;
 }
 
@@ -110,6 +132,8 @@ char *RTSPParser::Teardown(char *rtsp){
                              _version,
                              _code,
                              _cseq);
+
+  _ret = strdup(buf);
 
   // TODO: Teardown this session
 
