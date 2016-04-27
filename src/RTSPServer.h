@@ -10,18 +10,23 @@
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <net/if.h>
+#include <string>
 
+#include "RTSPParser.h"
 
 class RTSPServer {
   public:
     RTSPServer(struct sockaddr_in, int, int);
+    ~RTSPServer(void);
     RTSPServer* Create(int);
-    char* GetRTSPurl(void);
+    void Accept(void);
+    char* Geturl(void);
+    void Reply(void);
 
   private:
-    struct sockaddr_in server_addr;
-    int server_sock, port;
-    char* url;
+    struct sockaddr_in _server_addr;
+    int _listenfd, _port;
+    char* _url;
 
     void Createurl(void);
 

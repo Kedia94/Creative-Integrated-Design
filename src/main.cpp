@@ -2,9 +2,6 @@
 
 int main(int argc, char **argv){
 
-  printf("\n");
-  printf("Initializing the server...\n");
-  printf("\n");
   RTSPServer* rtspserver = NULL;
   int port = 554;
 
@@ -22,8 +19,16 @@ int main(int argc, char **argv){
   
   printf("Welcome to H.265 Streaming Server\n");
   printf("You can use following url to stream a video\n");
-  printf("   %s<filename>\n", rtspserver->GetRTSPurl());
-  
+  printf("    %s<filename>\n", rtspserver->Geturl());
+  printf("        We support .ts file with AVC, HEVC codec.\n");
+
+
+  printf("Accepting...\n");
+  while (1){
+  rtspserver->Accept();
+  printf("Accepted.\n");
+  }
+  while(1);
   return 0;
 }
 
