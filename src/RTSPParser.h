@@ -11,10 +11,13 @@
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <net/if.h>
+#include <sys/time.h>
+
+#include "RTPSender.h"
 
 class RTSPParser {
   public:
-    RTSPParser(void);
+    RTSPParser(char *);
     ~RTSPParser(void);
     void Createip();
     void Create(char *);
@@ -35,15 +38,17 @@ class RTSPParser {
     char *Getcseq(void);
     char *Getnofile(void);
     char *GetSDP(void);
+    char *Createsessionid(void);
 
 
   
   private:
-    FILE *fp, *fp_index;
+    RTPSender *_rtps;
     char *_ret;
     char *_factor, *_fileurl, *_version;
     char *_cseq, *_code, *_filedir, *_ip;
     unsigned short _session, _rtpport, _rtcpport;
-
+    int _nextrtpport;
+    char *_clientIP;
 };
 

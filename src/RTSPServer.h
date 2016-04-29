@@ -21,7 +21,6 @@ class RTSPServer {
     RTSPServer* Create(int);
     void Accept(void);
     char* Geturl(void);
-    void Reply(void);
 
   private:
     struct sockaddr_in _server_addr;

@@ -1,10 +1,11 @@
 #include "RTSPParser.h"
 
-RTSPParser::RTSPParser(void){
+RTSPParser::RTSPParser(char *clientIP){
   _version = strdup("RTSP/1.0");
   _code = strdup("200 OK");
   Createip();
-
+  _nextrtpport = 6970;
+  _clientIP = strdup(clientIP);
 }
 
 RTSPParser::~RTSPParser(void){
@@ -111,7 +112,10 @@ char *RTSPParser::Describe(char *rtsp){
 
   printf("file: %s\n", _filedir);
 
-  if ((fp = fopen(_filedir, "r")) == NULL) {
+  _rtps = new RTPSender();
+  _rtps->Open(_filedir);
+
+  if (!_rtps->Hasfile()) {
     snprintf(buf, sizeof(buf), "%s 404 Stream Not Found\r\n"
                                "%s\r\n"
                                "%s\r\n\r\n",
@@ -124,6 +128,7 @@ char *RTSPParser::Describe(char *rtsp){
 
 
 
+  char *tmp = GetSDP();
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
                              "%s\r\n"
@@ -135,9 +140,9 @@ char *RTSPParser::Describe(char *rtsp){
                              _code,
                              _cseq,
                              Getdate(),
-                             _fileurl, // TODO: Content-Base
-                             379, //TODO: Content-Length
-                             GetSDP()); // TODO: %s
+                             _fileurl, 
+                             (int)strlen(tmp), 
+                             tmp); 
   
   _ret = strdup(buf);
   return _ret;
@@ -154,21 +159,37 @@ char *RTSPParser::Setup(char *rtsp){
   transport = strtok_r(ptr, "\r\n", &ptr);
 
   // transport =  Transport: RTP/AVP;unicast;client_port=8000-8001
-  printf("%s\n",transport);
+
+  strtok_r(strdup(transport), "=", &ptr);
+  int rtpport = atoi(strtok_r(ptr, "-", &ptr));
+
+  // transport = 8000
+
+  printf("%d\n", rtpport);
+  if (!_rtps->Create(_nextrtpport)){
+    printf("Error on binding rtp, rtcp\n");
+  }
+  _nextrtpport += 2;
+
 
 
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
                              "%s\r\n"
-                             "Transport: RTP/AVP;unicast;destination=192.168.0.4;source=192.168.0.190;client_port=62294-62295;server_port=6970-6971\r\n"
+                             "Transport: RTP/AVP;unicast;destination=%s;source=%s;client_port=%d-%d;server_port=%d-%d\r\n"
                              "Session: %s;timeout=%d\r\n\r\n",
                              _version,
                              _code,
                              _cseq,
                              Getdate(),
-                              // TODO: Transport
-                             strdup("3FC36AB2"),
-                             64); // TODO: Session
+                             _clientIP, 
+                             _ip,
+                             rtpport,
+                             (rtpport+1),
+                             _rtps->Getport(),
+                             (_rtps->Getport()+1),
+                             _rtps->Getid(),
+                             64); // TODO: timeout
   
   _ret = strdup(buf);
       
@@ -186,15 +207,49 @@ char *RTSPParser::Teardown(char *rtsp){
                              _cseq,
                              Getdate());
 
-  _ret = strdup(buf);
+  _rtps->~RTPSender();
 
-  // TODO: Teardown this session
+  _ret = strdup(buf);
 
   return _ret;
 }
 
 char *RTSPParser::Play(char *rtsp){
   char buf[2048];
+
+  /*
+   * CSeq: current sequence number
+   * 
+   * Pause / Play
+   *
+   * PLAY rtsp://192.168.0.190:8554/h265.ts RTSP/1.0\r\n
+   * CSeq: 19\r\n
+   * User-Agent: ~~\r\n
+   * Session: CCE03A08\r\n
+   * \r\n
+   *
+   * Seek / Play
+   *
+   * PLAY rtsp://192.168.0.190:8554/h265.ts RTSP/1.0\r\n
+   * CSeq: 21\r\n
+   * User-Agent: ~~\r\n
+   * Session: CCE03A08\r\n
+   * Range: npt=94.774-\r\n
+   * \r\n
+   */
+
+  char *npt, *ptr;
+
+  strtok_r(rtsp, "\r\n", &ptr);
+  strtok_r( ptr, "\r\n", &ptr);
+  strtok_r( ptr, "\r\n", &ptr);
+  npt = strtok_r(ptr, "\r\n", &ptr);
+  if (npt != NULL){
+    strtok_r(npt, "=", &ptr);
+    npt = strtok_r(ptr, "-", &ptr);
+    printf("npt: %s\n", npt);
+  }
+    
 
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
@@ -205,7 +260,7 @@ char *RTSPParser::Play(char *rtsp){
                              _code,
                              _cseq,
                              Getdate(),
-                             _cseq, // TODO: Session
+                             _rtps->Getid(), 
                              _cseq); // TODO: RTP-info
   
   _ret = strdup(buf);
@@ -224,7 +279,7 @@ char *RTSPParser::Pause(char *rtsp){
                              _code,
                              _cseq,
                              Getdate(),
-                             _cseq); // TODO: Session
+                             _rtps->Getid()); 
 
   _ret = strdup(buf);
 
@@ -233,20 +288,16 @@ char *RTSPParser::Pause(char *rtsp){
 
 char *RTSPParser::Get_parameter(char *rtsp){
   char buf[2048];
-//TODO: is it right?
+  
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
                              "%s\r\n"
-                             "Session: %s\r\n"
-                             "Content-Length: %s\r\n"
-                             "%s\r\n\r\n",
+                             "Session: %s\r\n\r\n",
                              _version,
                              _code,
                              _cseq,
                              Getdate(),
-                             _cseq, // TODO: Session
-                             _cseq, // TODO: Content-Length
-                             _cseq); // TODO: %s
+                             _rtps->Getid());
 
   _ret = strdup(buf);
 
@@ -255,20 +306,13 @@ char *RTSPParser::Get_parameter(char *rtsp){
 
 char *RTSPParser::Set_parameter(char *rtsp){
   char buf[2048];
-//TODO: is it right?
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
-                             "%s\r\n"
-                             "Content-Length: %s\r\n"
-                             "Content-Type: %s\r\n"
                              "%s\r\n\r\n",
                              _version,
                              _code,
                              _cseq,
-                             Getdate(),
-                             _cseq, // TODO: Content-Length
-                             _cseq, // TODO: Content-Type
-                             _cseq); // TODO: %s
+                             Getdate());
 
   _ret = strdup(buf);
   
@@ -322,7 +366,7 @@ char *RTSPParser::GetSDP(void){
   char buf[2048];
 
   snprintf(buf, sizeof(buf), "v=0\r\n"
-                             "o=- %ld 1 IN IP4 %s\r\n"
+                             "o=- %s 1 IN IP4 %s\r\n"
                              "s=MPEG Transport Stream, streamed by the HEVC Streaming Server\r\n"
                              "i=%s\r\n"
                              "t=0 0\r\n"
@@ -334,14 +378,24 @@ char *RTSPParser::GetSDP(void){
                              "a=x-qt-text-inf:%s\r\n"
                              "m=video 0 RTP/AVP 33\r\n" // TS file payload is 33
                              "c=IN IP4 0.0.0.0\r\n"
-                             "b=AS:4000\r\n"
-                             "a=control:track1\r\n",
+                             "b=AS:4000\r\n",
+                             //"a=control:track1\r\n",
  
-                             -1461759576378419, //TODO: Create Session ID
+                             Createsessionid(), //TODO: Create Session ID
                              _ip,
                              _filedir,
-                             strdup("215.395"),
-                             _filedir); //TODO: Video total playtime.
+                             _rtps->Getplaytime(), // TODO: Video total playtime
+                             _filedir);
 
+  return strdup(buf);
+}
+
+char *RTSPParser::Createsessionid(void){
+  char buf[256];
+
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  snprintf(buf, sizeof(buf), "%ld%06ld", tv.tv_sec, tv.tv_usec);
+  
   return strdup(buf);
 }

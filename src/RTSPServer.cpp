@@ -17,7 +17,7 @@ RTSPServer* RTSPServer::Create(int port){
   struct sockaddr_in server_addr;
   struct sockaddr_in clnt_addr;
 
-  listenfd = socket(AF_INET, SOCK_STREAM, 0); 
+  listenfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); 
   if (listenfd < 0){
     printf("socket() error\n");
     return NULL;
@@ -56,10 +56,10 @@ void RTSPServer::Accept(void){
   char clientIP[16];
   inet_ntop(AF_INET, &sa_cli.sin_addr.s_addr, clientIP, sizeof(clientIP));
   printf("%s\n", clientIP);
-
+  
   char read_buf[2048], write_buf[2048];
   int n;
- RTSPParser *rtsppar = new RTSPParser(); 
+ RTSPParser *rtsppar = new RTSPParser(clientIP); 
   while ((n = read(connfd, read_buf, sizeof(read_buf))) > 0){
 //    printf("(debug) Got\n%s\n\n", buf);
     
@@ -82,20 +82,6 @@ void RTSPServer::Accept(void){
 
 char* RTSPServer::Geturl(void){
   return _url;
-}
-
-void RTSPServer::Reply(void){
-  RTSPParser rtsppar;
-  std::string ResponseBuffer;
-  
-  char *CurrentCSeq;
-  /*
-  snprintf((char *)ResponseBuffer, sizeof(ResponseBuffer), 
-           "RTSP/1.0 200 OK\r\nCSeq: %s\r\n%sPublic: %s\r\n\r\n", 
-           CurrentCSeq, rtsp.Getdate(), Date);
-*/
-  ResponseBuffer = "RTSP/1.0 200 OK\r\nCSeq: ";
-  rtsppar.Getdate();
 }
 
 void RTSPServer::Createurl(void){
