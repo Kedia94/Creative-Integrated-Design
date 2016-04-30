@@ -39,16 +39,16 @@ class RTSPParser {
     char *Getnofile(void);
     char *GetSDP(void);
     char *Createsessionid(void);
+	void sendRTP(void);
+	RTPSender *_rtps;
 
 
   
   private:
-    RTPSender *_rtps;
     char *_ret;
     char *_factor, *_fileurl, *_version;
     char *_cseq, *_code, *_filedir, *_ip;
-    unsigned short _session, _rtpport, _rtcpport;
-    int _nextrtpport;
+    unsigned short _session;
     char *_clientIP;
 };
 

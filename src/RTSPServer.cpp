@@ -76,6 +76,10 @@ void RTSPServer::Accept(void){
     write(connfd, write_buf, strlen(write_buf));
     memset(read_buf, 0, sizeof(read_buf));
     memset(write_buf, 0, sizeof(write_buf));
+	if (rtsppar->_rtps && rtsppar->_rtps->isPlaying()){
+		sa_cli.sin_port = htons(rtsppar->_rtps->Getclientport());
+		rtsppar->_rtps->Play(sa_cli);
+	}
   }
 
 }

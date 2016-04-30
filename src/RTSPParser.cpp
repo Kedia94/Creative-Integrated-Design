@@ -4,8 +4,8 @@ RTSPParser::RTSPParser(char *clientIP){
   _version = strdup("RTSP/1.0");
   _code = strdup("200 OK");
   Createip();
-  _nextrtpport = 6970;
   _clientIP = strdup(clientIP);
+  _rtps = NULL;
 }
 
 RTSPParser::~RTSPParser(void){
@@ -161,17 +161,15 @@ char *RTSPParser::Setup(char *rtsp){
   // transport =  Transport: RTP/AVP;unicast;client_port=8000-8001
 
   strtok_r(strdup(transport), "=", &ptr);
-  int rtpport = atoi(strtok_r(ptr, "-", &ptr));
+  int client_rtpport = atoi(strtok_r(ptr, "-", &ptr));
 
   // transport = 8000
 
-  printf("%d\n", rtpport);
-  if (!_rtps->Create(_nextrtpport)){
+  printf("%d\n", client_rtpport);
+  if (!_rtps->Create(client_rtpport)){
     printf("Error on binding rtp, rtcp\n");
   }
-  _nextrtpport += 2;
-
-
+  
 
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
@@ -184,10 +182,10 @@ char *RTSPParser::Setup(char *rtsp){
                              Getdate(),
                              _clientIP, 
                              _ip,
-                             rtpport,
-                             (rtpport+1),
-                             _rtps->Getport(),
-                             (_rtps->Getport()+1),
+                             client_rtpport,
+                             (client_rtpport+1),
+                             _rtps->Getserverport(),
+                             (_rtps->Getserverport()+1),
                              _rtps->Getid(),
                              64); // TODO: timeout
   
@@ -255,15 +253,16 @@ char *RTSPParser::Play(char *rtsp){
                              "%s\r\n"
                              "%s\r\n"
                              "Session: %s\r\n"
-                             "RTP-info: %s\r\n\r\n",
+                             "RTP-info: url=%s/track1;seq=0;rtptime=0\r\n\r\n",
                              _version,
                              _code,
                              _cseq,
                              Getdate(),
                              _rtps->Getid(), 
-                             _cseq); // TODO: RTP-info
+                             _fileurl); // TODO: RTP-info
   
   _ret = strdup(buf);
+  _rtps->setPlay(true);
 
   return _ret;
 }

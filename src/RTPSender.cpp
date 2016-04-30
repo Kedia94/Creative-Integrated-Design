@@ -41,7 +41,9 @@ void RTPSender::Close(void){
   }
 }
 
-bool RTPSender::Create(int port){
+bool RTPSender::Create(int clientport){
+  _clientrtpport = clientport;
+  int port = 6970;
   _rtpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (_rtpfd < 0){
     printf("rtp socket() error\n");
@@ -75,8 +77,8 @@ bool RTPSender::Create(int port){
 
     break;
   }
-  _rtpport = port-1;
-  _rtcpport = port;
+  _serverrtpport = port-1;
+  _serverrtcpport = port;
   return true;
 }
   
@@ -114,14 +116,48 @@ char *RTPSender::Getplaytime(void){
   return strdup("123.456");
 }
 
-void RTPSender::Play(char *time){
-  _play = true;
+void RTPSender::Play(struct sockaddr_in client_addr){
+  assert( _play == true );
+  char buffer[PACKETSIZE];
+  // because we sent RTP-INFO: seq=0;rtprime=0 at play function in RTSPParser.cpp
+  unsigned short seq_num = 0;
+  unsigned int timestamp = 0;
+  while(true){
+	  usleep(1000);
+	  memset(buffer, 0, sizeof(buffer));
+	  // ver = 2 (2bit) p = 0 (1bit) extension = 0 (1bit) cc = 0 (4bit)
+	  buffer[0] = 1<<7;
+	  // m = 0 (1bit) payload_type = MPEG2TS (7bit)
+	  buffer[1] = MPEG2TS;
+	  *((unsigned short *) (buffer+2)) = htons(seq_num++);
+	  *((unsigned int *) (buffer+4)) = htonl(timestamp);
+	  *((unsigned int *) (buffer+8)) = htonl(_ssrc);
+	  char payload[TSPACKETSIZE*TSPACKETNUM];
+	  fread( payload, sizeof(char), sizeof(payload), _fp);
+	  memcpy( buffer+12, payload, sizeof(payload));
+	  // TODO : calculate more precisely
+	  timestamp += 3906;
+	  sendto( _rtpfd, buffer, PACKETSIZE, 0, (struct sockaddr *)&client_addr, sizeof(client_addr));
+  }
+
 }
 
 void RTPSender::Pause(void){
   _play = false;
 }
 
-int RTPSender::Getport(void){
-  return _rtpport;
+int RTPSender::Getclientport(void){
+  return _clientrtpport;
+}
+
+int RTPSender::Getserverport(void){
+  return _serverrtpport;
+}
+
+void RTPSender::setPlay(bool play){
+	_play = play;
+}
+
+bool RTPSender::isPlaying(void){
+	return _play;
 }
