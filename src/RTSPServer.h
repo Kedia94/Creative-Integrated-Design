@@ -12,15 +12,19 @@
 #include <net/if.h>
 #include <string>
 #include <pthread.h>
+#include <mutex>
 
 #include <map>
 
 #include "RTSPParser.h"
 
+std::mutex mutx;
+
 struct soc {
   int connfd;
   sockaddr_in sa_cli;
   void *server;
+  RTSPParser *rtsppar;
 };
 
 class RTSPServer {

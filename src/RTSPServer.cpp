@@ -59,6 +59,21 @@ void RTSPServer::Accept(void){
     struct soc sock;
     connfd = accept(_listenfd, (sockaddr*)&sa_cli, &cli_addr_len);
 
+    char clientIP[16];
+    char buf[32];
+
+    inet_ntop(AF_INET, &sa_cli.sin_addr.s_addr, clientIP, sizeof(clientIP));
+    snprintf(buf, sizeof(buf), "%s:%d", clientIP, ntohs(sa_cli.sin_port));
+
+    RTSPParser *rtsppar = new RTSPParser(clientIP);
+
+    printf("New client %s\n", buf);
+
+    mutx.lock();
+    _parser[buf] = rtsppar;
+    mutx.unlock();
+
+
     if (connfd < 0) {
       printf("accept() error\n");
       usleep(1000*1000);
@@ -68,10 +83,21 @@ void RTSPServer::Accept(void){
     sock.connfd = connfd;
     sock.sa_cli = sa_cli;
     sock.server = this;
+    sock.rtsppar = rtsppar;
 
     if (pthread_create(&thread, NULL, Loop, (void *)&sock)){
       printf("Loop pthread_create error");
     }
+    mutx.lock();
+    for (auto i = _parser.begin(); i != _parser.end();){
+      if (i->second->Getteardown()){
+        _parser.erase(i++);
+        continue;
+      }
+      i++;
+    }
+    mutx.unlock();
+    printf("mtx unlock\n");
   }
 }
 
@@ -82,20 +108,20 @@ void *RTSPServer::Loop(void *newsock){
   char clientIP[16];
   sockaddr_in sa_cli = ((struct soc*)newsock)->sa_cli;
   inet_ntop(AF_INET, &sa_cli.sin_addr.s_addr, clientIP, sizeof(clientIP));
-  printf("New Client: %s:%d\n", clientIP, ntohs(sa_cli.sin_port);
+//  printf("New Client: %s:%d\n", clientIP, ntohs(sa_cli.sin_port));
 
 
   RTSPServer *serv = (RTSPServer *)(((struct soc *)newsock)->server);
   char read_buf[2048], write_buf[2048];
   int n;
-  RTSPParser *rtsppar = new RTSPParser(clientIP);
+  RTSPParser *rtsppar = ((struct soc *)newsock)->rtsppar;
 
-  snprintf(read_buf, sizeof(read_buf), "%s:%d", clientIP, ntohs(sa_cli.sin_port));
+//  snprintf(read_buf, sizeof(read_buf), "%s:%d", clientIP, ntohs(sa_cli.sin_port));
 
-  std::map<std::string, RTSPParser*> pars = serv->Getparser();
-  serv->Addparser(read_buf, rtsppar);
+//  std::map<std::string, RTSPParser*> pars = serv->Getparser();
+//  serv->Addparser(read_buf, rtsppar);
 
-  memset(read_buf, 0, sizeof(read_buf));
+//  memset(read_buf, 0, sizeof(read_buf));
 
   pthread_t thread;
   while ((n = read(connfd, read_buf, sizeof(read_buf))) > 0){
@@ -105,6 +131,7 @@ void *RTSPServer::Loop(void *newsock){
     if (strncmp(write_buf, rtsppar->Getnofile(), 29) == 0){
       printf("no such file: %s\n", rtsppar->Getfiledir());
       write(connfd, write_buf, strlen(write_buf));
+      rtsppar->Setcomplete();
       return NULL;
     }
     
@@ -159,22 +186,18 @@ int k = 1;
   while (true){
     usleep(1000);
     pars = server->Getparser();
-  //  printf("%x %x\n", pars.begin(), pars.end());
-    for (auto i = pars.begin(); i != pars.end();){
-      if (i->second->Getteardown() && i->second->Getcomplete()){
-        //delete i->second; // TODO: Double free in here
-        pars.erase(i++);
+    //    printf("%x %x\n", pars.begin(), pars.end());
+    mutx.lock();
+    for (auto i = pars.begin(); i != pars.end();i++){
+      //      printf("%x teardown: %d, %d\n", i, i->second->Getteardown(), i->second->Getcomplete());
+      if (i->second->Getteardown() || i->second->GetRTPS() == NULL){
         continue;
       }
-      else if (!i->second->Getteardown()){
-        if (i->second->GetRTPS() == NULL){
-          i++;
-          continue;
-        }
+      else {
         i->second->GetRTPS()->Play();
-        i++;
       }
     }
+    mutx.unlock();
   }
 }
 

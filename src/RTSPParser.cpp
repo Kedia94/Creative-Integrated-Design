@@ -118,6 +118,11 @@ char *RTSPParser::Describe(char *rtsp){
   _rtps->Open(_filedir);
 
   if (!_rtps->Hasfile()) {
+  /*  _code = strdup("404 Stream Not Found");
+    _teardown = true;
+
+    return Getnofile();
+    */
     snprintf(buf, sizeof(buf), "%s 404 Stream Not Found\r\n"
                                "%s\r\n"
                                "%s\r\n\r\n",
@@ -127,6 +132,7 @@ char *RTSPParser::Describe(char *rtsp){
     _teardown = true;
     _ret = strdup(buf);
     return _ret;
+    
   }
 
 
@@ -267,7 +273,7 @@ char *RTSPParser::Play(char *rtsp){
                              _rtps->Getid(), 
                              _clientIP,
                              _rtps->Getseq(),
-                             _rtps->Gettimestamp()); // TODO: RTP-info
+                             _rtps->Gettimestamp()); 
   
   _ret = strdup(buf);
 
