@@ -18,7 +18,7 @@
 
 #include "RTSPParser.h"
 
-std::mutex mutx;
+std::mutex mutexparser;
 
 struct soc {
   int connfd;
