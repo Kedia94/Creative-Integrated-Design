@@ -1,5 +1,5 @@
 CC=c++
-CCFLAGS=-std=c++0x -g -O0
+CCFLAGS=-std=c++0x -g -O0 -pthread
 
 SRC_DIR=src
 OBJ_DIR=obj

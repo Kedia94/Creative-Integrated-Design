@@ -39,7 +39,10 @@ class RTSPParser {
     char *Getnofile(void);
     char *GetSDP(void);
     char *Createsessionid(void);
-
+    bool Getteardown(void);
+    RTPSender *GetRTPS(void);
+    void Setcomplete(void);
+    bool Getcomplete(void);
 
   
   private:
@@ -50,5 +53,7 @@ class RTSPParser {
     unsigned short _session, _rtpport, _rtcpport;
     int _nextrtpport;
     char *_clientIP;
+    bool _teardown;
+    bool _complete;
 };
 
