@@ -1,43 +1,40 @@
 #include "RTPSender.h"
 
 RTPSender::RTPSender(void){
-  _fp = NULL;
-  _xfp = NULL;
+  _fd = -1;
+  _xfd = -1;
   _play = false;
   _seq=0;
   Createid();
 }
 
 RTPSender::~RTPSender(void){
-  if (_fp != NULL){
-    fclose(_fp);
-    _fp = NULL;
-  }
-  if (_xfp != NULL){
-    fclose(_xfp);
-    _xfp = NULL;
-  }
+  Close();
 }
 
 void RTPSender::Open(char *name){
-  _fp = fopen(name, "r");
+  _fd = open(name, O_RDONLY);
   
   char xname[512];
 
   snprintf(xname, sizeof(xname), "%sx", name);
 
-  _xfp = fopen(xname, "r");
+  _xfd = open(xname, O_RDONLY);
+
+  gettimeofday(&_starttime, NULL);
+  _playtime.tv_sec = _starttime.tv_sec;
+  _playtime.tv_usec = _starttime.tv_usec;
 
 }
 
 void RTPSender::Close(void){
-  if (_fp != NULL){
-    fclose(_fp);
-    _fp = NULL;
+  if (_fd > 0){
+    close(_fd);
+    _fd = -1;
   }
-  if (_xfp != NULL){
-    fclose(_xfp);
-    _xfp = NULL;
+  if (_xfd > 0){
+    close(_xfd);
+    _xfd = -1;
   }
 }
 
@@ -99,29 +96,108 @@ char *RTPSender::Getid(void){
 }
 
 bool RTPSender::Hasfile(void){
-  return (_fp != NULL);
+  return (_fd > 0);
 }
 
 bool RTPSender::Hasindex(void){
-  return (_xfp != NULL);
+  return (_xfd > 0);
 }
 
 char *RTPSender::Getplaytime(void){
-  if (_xfp == NULL){
-    return NULL;
+  if (_xfd >0){
+    return strdup("123.456");
   }
 
-  return strdup("123.456");
+  return strdup("");
 }
 
-void RTPSender::Play(char *time){
+void RTPSender::Play(void){
+  if (!_play){
+    return;
+  }
+
+  int i;
+  unsigned char buf[PACKETSIZE];
+
+  buf[0] = 1<<7; // 0x80
+  buf[1] = 33;   // 0x21
+
+  *((unsigned short *)(buf+2)) = htons(_seq++);
+  *((unsigned int *)(buf+4)) = htonl(_timestamp);
+  *((unsigned int *)(buf+8)) = htonl(_ssrc);
+
+  _timestamp += 236;
+
+  for (i=0; i<7; i++){
+    Readn(_fd, buf+12+188*i, 188); 
+
+  }
+
+  if (sendto(_rtpfd, buf, PACKETSIZE, 0, (struct sockaddr *)&_client_addr, sizeof(_client_addr)) == -1)
+    return;
+
+}
+
+void RTPSender::SetClient(char *ip, int port){
+  _client_addr.sin_family = AF_INET;
+  inet_pton(AF_INET, ip, &_client_addr.sin_addr);
+  _client_addr.sin_port = htons(port);
+}
+
+void RTPSender::SetPlay(char *time){
   _play = true;
+
+  //TODO: Set playtime to *time
 }
 
-void RTPSender::Pause(void){
+void RTPSender::SetPause(void){
   _play = false;
 }
 
 int RTPSender::Getport(void){
   return _rtpport;
 }
+
+int RTPSender::Getseq(void){
+  return _seq;
+}
+
+int RTPSender::Gettimestamp(void){
+  return _timestamp;
+}
+
+bool RTPSender::Getplay(void){
+  return _play;
+}
+int RTPSender::Readts(unsigned char *buf){
+//TODO
+  double npt;
+return 1;
+
+
+}
+
+ssize_t RTPSender::Readn(int fd, void *usrbuf, size_t n){
+  size_t nleft = n;
+  ssize_t nread;
+  char *bufp = (char *)usrbuf;
+
+  while (nleft > 0){
+    if ((nread = read(fd, bufp, nleft)) < 0){
+      if (errno = EINTR){
+        nread = 0;
+      }
+      else{
+        return -1;
+      }
+    }
+    else if (nread == 0){
+      break;
+    }
+    nleft -= nread;
+    bufp += nread;
+  }
+
+  return (n-nleft);
+}
+

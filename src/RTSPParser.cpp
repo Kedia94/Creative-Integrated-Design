@@ -6,10 +6,13 @@ RTSPParser::RTSPParser(char *clientIP){
   Createip();
   _nextrtpport = 6970;
   _clientIP = strdup(clientIP);
+  _teardown = false;
+  _complete = false;
 }
 
 RTSPParser::~RTSPParser(void){
 
+  delete _rtps;
 }
 
 void RTSPParser::Createip(void){
@@ -93,7 +96,6 @@ printf("%s\n",_factor);
 
 char *RTSPParser::Options(char *rtsp){
   char buf[2048];
-  
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                             "%s\r\n"
                             "%s\r\n"
@@ -116,14 +118,21 @@ char *RTSPParser::Describe(char *rtsp){
   _rtps->Open(_filedir);
 
   if (!_rtps->Hasfile()) {
+  /*  _code = strdup("404 Stream Not Found");
+    _teardown = true;
+
+    return Getnofile();
+    */
     snprintf(buf, sizeof(buf), "%s 404 Stream Not Found\r\n"
                                "%s\r\n"
                                "%s\r\n\r\n",
                                _version,
                                _cseq,
                                Getdate());
+    _teardown = true;
     _ret = strdup(buf);
     return _ret;
+    
   }
 
 
@@ -152,18 +161,18 @@ char *RTSPParser::Describe(char *rtsp){
 char *RTSPParser::Setup(char *rtsp){
   char buf[2048];
   char *transport, *ptr;
-  
   strtok_r(rtsp, "\r\n", &ptr);
   strtok_r( ptr, "\r\n", &ptr);
   strtok_r( ptr, "\r\n", &ptr);
   transport = strtok_r(ptr, "\r\n", &ptr);
 
+  // example
   // transport =  Transport: RTP/AVP;unicast;client_port=8000-8001
 
   strtok_r(strdup(transport), "=", &ptr);
   int rtpport = atoi(strtok_r(ptr, "-", &ptr));
-
-  // transport = 8000
+  
+  // rtpport = 8000
 
   printf("%d\n", rtpport);
   if (!_rtps->Create(_nextrtpport)){
@@ -171,7 +180,7 @@ char *RTSPParser::Setup(char *rtsp){
   }
   _nextrtpport += 2;
 
-
+  _rtps->SetClient(_clientIP, rtpport);
 
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
@@ -207,7 +216,7 @@ char *RTSPParser::Teardown(char *rtsp){
                              _cseq,
                              Getdate());
 
-  _rtps->~RTPSender();
+  _teardown = true;
 
   _ret = strdup(buf);
 
@@ -249,19 +258,22 @@ char *RTSPParser::Play(char *rtsp){
     npt = strtok_r(ptr, "-", &ptr);
     printf("npt: %s\n", npt);
   }
-    
+   _rtps->SetPlay(npt); 
+   printf("Play? %d\n", _rtps->Getplay());
 
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
                              "%s\r\n"
                              "Session: %s\r\n"
-                             "RTP-info: %s\r\n\r\n",
+                             "RTP-info: url=%s;seq=%d;rtptime=%d\r\n\r\n",
                              _version,
                              _code,
                              _cseq,
                              Getdate(),
                              _rtps->Getid(), 
-                             _cseq); // TODO: RTP-info
+                             _clientIP,
+                             _rtps->Getseq(),
+                             _rtps->Gettimestamp()); 
   
   _ret = strdup(buf);
 
@@ -271,6 +283,7 @@ char *RTSPParser::Play(char *rtsp){
 char *RTSPParser::Pause(char *rtsp){
   char buf[2048];
 
+  _rtps->SetPause();
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
                              "%s\r\n"
@@ -399,3 +412,20 @@ char *RTSPParser::Createsessionid(void){
   
   return strdup(buf);
 }
+
+RTPSender *RTSPParser::GetRTPS(void){
+  return _rtps;
+}
+
+bool RTSPParser::Getteardown(void){
+  return _teardown;
+}
+
+void RTSPParser::Setcomplete(void){
+  _complete = true;
+}
+
+bool RTSPParser::Getcomplete(void){
+  return _complete;
+}
+
