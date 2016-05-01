@@ -1,5 +1,7 @@
 #include "RTSPServer.h"
 
+std::mutex mutx;
+
 RTSPServer::RTSPServer(struct sockaddr_in server_addr, int listenfd,  int port){
   _server_addr = server_addr;
   _listenfd = listenfd;
@@ -69,9 +71,9 @@ void RTSPServer::Accept(void){
 
     printf("New client %s\n", buf);
 
-    mutexparser.lock();
+    mutx.lock();
     _parser[buf] = rtsppar;
-    mutexparser.unlock();
+    mutx.unlock();
 
 
     if (connfd < 0) {
@@ -88,7 +90,7 @@ void RTSPServer::Accept(void){
     if (pthread_create(&thread, NULL, Loop, (void *)&sock)){
       printf("Loop pthread_create error");
     }
-    mutexparser.lock();
+    mutx.lock();
     for (auto i = _parser.begin(); i != _parser.end();){
       if (i->second->Getteardown()){
         _parser.erase(i++);
@@ -96,7 +98,7 @@ void RTSPServer::Accept(void){
       }
       i++;
     }
-    mutexparser.unlock();
+    mutx.unlock();
     printf("mtx unlock\n");
   }
 }
@@ -187,7 +189,7 @@ int k = 1;
     usleep(1000);
     pars = server->Getparser();
     //    printf("%x %x\n", pars.begin(), pars.end());
-    mutexparser.lock();
+    mutx.lock();
     for (auto i = pars.begin(); i != pars.end();i++){
       //      printf("%x teardown: %d, %d\n", i, i->second->Getteardown(), i->second->Getcomplete());
       if (i->second->Getteardown() || i->second->GetRTPS() == NULL){
@@ -197,7 +199,7 @@ int k = 1;
         i->second->GetRTPS()->Play();
       }
     }
-    mutexparser.unlock();
+    mutx.unlock();
   }
 }
 

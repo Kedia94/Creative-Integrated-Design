@@ -18,8 +18,6 @@
 
 #include "RTSPParser.h"
 
-std::mutex mutexparser;
-
 struct soc {
   int connfd;
   sockaddr_in sa_cli;
