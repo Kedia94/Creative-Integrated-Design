@@ -46,5 +46,4 @@ class RTSPServer {
     std::map <std::string, RTSPParser*> _parser;
 
     void Createurl(void);
-
 };
