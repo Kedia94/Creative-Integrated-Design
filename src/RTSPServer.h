@@ -37,6 +37,12 @@ class RTSPServer {
     std::map<std::string, RTSPParser*> Getparser(void);
     void Addparser(char *, RTSPParser *);
 
+    /*
+     * 미구현
+     */
+    void Servermanage();
+    void Redirect();
+
   private:
     struct sockaddr_in _server_addr;
     int _listenfd, _port;

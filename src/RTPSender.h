@@ -12,6 +12,10 @@
 #include <sys/time.h>
 #include <arpa/inet.h>
 
+#include <map>
+#include <vector>
+
+
 #define KEYLEN 8
 #define TSPACKETNUM 7
 #define TSPACKETSIZE 188
@@ -41,6 +45,7 @@ class RTPSender {
     ssize_t Readn(int, void *, size_t);
 
     int Readts(unsigned char *);
+    void Readtsx(void);
 
 
   private:
@@ -54,6 +59,10 @@ class RTPSender {
     int _seq;
     int _timestamp;
     timeval _starttime, _playtime;
+
+    double _dur;
+    std::map<double, unsigned> iframe;
+    std::vector<double> pcrs;
 
     struct sockaddr_in _client_addr;
 

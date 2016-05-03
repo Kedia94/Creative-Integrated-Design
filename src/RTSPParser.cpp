@@ -417,6 +417,10 @@ RTPSender *RTSPParser::GetRTPS(void){
   return _rtps;
 }
 
+void RTSPParser::Setteardown(void){
+  _teardown = true;
+}
+
 bool RTSPParser::Getteardown(void){
   return _teardown;
 }

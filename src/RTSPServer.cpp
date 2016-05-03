@@ -133,6 +133,7 @@ void *RTSPServer::Loop(void *newsock){
     if (strncmp(write_buf, rtsppar->Getnofile(), 29) == 0){
       printf("no such file: %s\n", rtsppar->Getfiledir());
       write(connfd, write_buf, strlen(write_buf));
+      rtsppar->Setteardown();
       rtsppar->Setcomplete();
       return NULL;
     }

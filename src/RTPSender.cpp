@@ -21,6 +21,9 @@ void RTPSender::Open(char *name){
 
   _xfd = open(xname, O_RDONLY);
 
+  if (_xfd > 0)
+    Readtsx();
+
   gettimeofday(&_starttime, NULL);
   _playtime.tv_sec = _starttime.tv_sec;
   _playtime.tv_usec = _starttime.tv_usec;
@@ -105,7 +108,9 @@ bool RTPSender::Hasindex(void){
 
 char *RTPSender::Getplaytime(void){
   if (_xfd >0){
-    return strdup("123.456");
+    char buf[20];
+    snprintf(buf, sizeof(buf), "%f", _dur);
+    return strdup(buf);
   }
 
   return strdup("");
@@ -148,6 +153,10 @@ void RTPSender::SetPlay(char *time){
   _play = true;
 
   //TODO: Set playtime to *time
+  if (!Hasindex())
+    return;
+
+  double npt = atof(time);
 }
 
 void RTPSender::SetPause(void){
@@ -201,3 +210,75 @@ ssize_t RTPSender::Readn(int fd, void *usrbuf, size_t n){
   return (n-nleft);
 }
 
+
+
+enum RecordType {
+  RECORD_UNPARSED = 0,
+  RECORD_VSH = 1, // a MPEG Video Sequence Header
+  RECORD_GOP = 2,
+  RECORD_PIC_NON_IFRAME = 3, // includes slices
+  RECORD_PIC_IFRAME = 4, // includes slices
+  RECORD_NAL_H264_SPS = 5, // H.264
+  RECORD_NAL_H264_PPS = 6, // H.264
+  RECORD_NAL_H264_SEI = 7, // H.264
+  RECORD_NAL_H264_NON_IFRAME = 8, // H.264
+  RECORD_NAL_H264_IFRAME = 9, // H.264
+  RECORD_NAL_H264_OTHER = 10, // H.264
+  RECORD_NAL_H265_VPS = 11, // H.265
+  RECORD_NAL_H265_SPS = 12, // H.265
+  RECORD_NAL_H265_PPS = 13, // H.265
+  RECORD_NAL_H265_NON_IFRAME = 14, // H.265
+  RECORD_NAL_H265_IFRAME = 15, // H.265
+  RECORD_NAL_H265_OTHER = 16, // H.265
+  RECORD_JUNK
+};
+
+
+
+void RTPSender::Readtsx(void){
+  /*
+     fTo[0] = (u_int8_t)(head->recordType());
+     fTo[1] = head->startOffset();
+     fTo[2] = head->size();
+         // Deliver the PCR, as 24 bits (integer part; little endian) + 8 bits (fractional part)
+     float pcr = head->pcr();
+     unsigned pcr_int = (unsigned)pcr;
+     u_int8_t pcr_frac = (u_int8_t)(256*(pcr-pcr_int));
+     fTo[3] = (unsigned char)(pcr_int);
+     fTo[4] = (unsigned char)(pcr_int>>8);
+     fTo[5] = (unsigned char)(pcr_int>>16);
+     fTo[6] = (unsigned char)(pcr_frac);
+         // Deliver the transport packet number (in little-endian order):
+     unsigned long tpn = head->transportPacketNumber();
+     fTo[7] = (unsigned char)(tpn);
+     fTo[8] = (unsigned char)(tpn>>8);
+     fTo[9] = (unsigned char)(tpn>>16);
+     fTo[10] = (unsigned char)(tpn>>24);
+     fFrameSize = 11;
+     */
+  if (!Hasindex())
+    return;
+
+  unsigned char buf[11];
+  double pcr;
+
+  pcrs.clear();
+  while (true){
+    if (Readn(_xfd, (char*)buf, 11) == 0)
+      break;
+
+    unsigned char recordtype = buf[0];
+    unsigned pcr_int = (unsigned)buf[3] + ((unsigned)buf[4]<<8) + ((unsigned)buf[5]<<16);
+    unsigned pcr_frac = buf[6];
+    pcr = pcr_int + pcr_frac / 256.0;
+
+    unsigned tpn = *(unsigned*)(&buf[7]);
+    if (recordtype == RECORD_NAL_H264_IFRAME || recordtype == RECORD_NAL_H265_IFRAME)
+      iframe[pcr] = tpn;
+
+    while (pcrs.size() <= tpn)
+      pcrs.push_back(pcr);
+  }
+  iframe[0.0] = 0;
+  _dur = pcr;
+}

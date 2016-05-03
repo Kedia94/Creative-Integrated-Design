@@ -39,6 +39,7 @@ class RTSPParser {
     char *Getnofile(void);
     char *GetSDP(void);
     char *Createsessionid(void);
+    void Setteardown(void);
     bool Getteardown(void);
     RTPSender *GetRTPS(void);
     void Setcomplete(void);
