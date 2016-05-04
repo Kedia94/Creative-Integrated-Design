@@ -248,28 +248,32 @@ char *RTSPParser::Play(char *rtsp){
    */
 
   char *npt, *ptr;
-
-  strtok_r(rtsp, "\r\n", &ptr);
-  strtok_r( ptr, "\r\n", &ptr);
-  strtok_r( ptr, "\r\n", &ptr);
-  npt = strtok_r(ptr, "\r\n", &ptr);
-  if (npt != NULL){
-    strtok_r(npt, "=", &ptr);
-    npt = strtok_r(ptr, "-", &ptr);
-    printf("npt: %s\n", npt);
+  ptr = strdup(rtsp);
+  while (true){
+    npt = strtok_r(ptr, "\r\n", &ptr);
+    if (npt == NULL){
+      break;
+    }
+    if (strncmp(npt, "Range", 5)==0){
+      strtok_r(npt, "=", &ptr);
+      npt = strtok_r(ptr, "-", &ptr);
+      break;
+    }
   }
-   _rtps->SetPlay(npt); 
-   printf("Play? %d\n", _rtps->Getplay());
+
+  _rtps->SetPlay(npt); 
 
   snprintf(buf, sizeof(buf), "%s %s\r\n"
                              "%s\r\n"
                              "%s\r\n"
+                             "Range: npt=%f-\r\n"
                              "Session: %s\r\n"
                              "RTP-info: url=%s;seq=%d;rtptime=%d\r\n\r\n",
                              _version,
                              _code,
                              _cseq,
                              Getdate(),
+                             _rtps->Getnpt(),
                              _rtps->Getid(), 
                              _clientIP,
                              _rtps->Getseq(),

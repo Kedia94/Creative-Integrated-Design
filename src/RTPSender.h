@@ -15,6 +15,7 @@
 #include <map>
 #include <vector>
 
+#include "Reader.h"
 
 #define KEYLEN 8
 #define TSPACKETNUM 7
@@ -41,6 +42,10 @@ class RTPSender {
     int Getseq(void);
     int Gettimestamp(void);
     bool Getplay(void);
+    double Getnpt(void);
+    bool Seeknpt(double);
+    int Getframe(unsigned char *);
+
 
     ssize_t Readn(int, void *, size_t);
 
@@ -58,12 +63,14 @@ class RTPSender {
     int _ssrc;
     int _seq;
     int _timestamp;
-    timeval _starttime, _playtime;
+    timeval _starttime;
+    int _curtpn;
 
     double _dur;
     std::map<double, unsigned> iframe;
     std::vector<double> pcrs;
 
+    Reader *_tsr;
     struct sockaddr_in _client_addr;
 
 };

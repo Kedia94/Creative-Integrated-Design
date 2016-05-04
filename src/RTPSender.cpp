@@ -5,7 +5,9 @@ RTPSender::RTPSender(void){
   _xfd = -1;
   _play = false;
   _seq=0;
+  _tsr = NULL;
   Createid();
+  _curtpn = 0;
 }
 
 RTPSender::~RTPSender(void){
@@ -21,12 +23,12 @@ void RTPSender::Open(char *name){
 
   _xfd = open(xname, O_RDONLY);
 
-  if (_xfd > 0)
+  if (_xfd > 0){
     Readtsx();
+  }
 
-  gettimeofday(&_starttime, NULL);
-  _playtime.tv_sec = _starttime.tv_sec;
-  _playtime.tv_usec = _starttime.tv_usec;
+  _tsr = new Reader(_fd);
+
 
 }
 
@@ -124,22 +126,31 @@ void RTPSender::Play(void){
   int i;
   unsigned char buf[PACKETSIZE];
 
-  buf[0] = 1<<7; // 0x80
-  buf[1] = 33;   // 0x21
+  buf[0] = 0x80; // 0x80
+  buf[1] = 0x21;   // 0x21
 
-  *((unsigned short *)(buf+2)) = htons(_seq++);
+  *((unsigned short *)(buf+2)) = htons(_seq);
   *((unsigned int *)(buf+4)) = htonl(_timestamp);
   *((unsigned int *)(buf+8)) = htonl(_ssrc);
 
-  _timestamp += 236;
 
   for (i=0; i<7; i++){
-    Readn(_fd, buf+12+188*i, 188); 
-
+    int res = Getframe(buf+12+188*i);
+    if (res == -1){
+      _play = false;
+      break;
+    } else if (res == -2){
+      break;
+    } else {
+      _timestamp += res;
+    }
   }
 
-  if (sendto(_rtpfd, buf, PACKETSIZE, 0, (struct sockaddr *)&_client_addr, sizeof(_client_addr)) == -1)
-    return;
+  if (i>0){
+    if (sendto(_rtpfd, buf, 12+188*i, 0, (struct sockaddr *)&_client_addr, sizeof(_client_addr)) == -1)
+      return;
+    _seq++;
+  }
 
 }
 
@@ -152,11 +163,17 @@ void RTPSender::SetClient(char *ip, int port){
 void RTPSender::SetPlay(char *time){
   _play = true;
 
+  double npt;
   //TODO: Set playtime to *time
   if (!Hasindex())
     return;
+  if (time != NULL){
+    npt = atof(time);
+    printf("%f\n", npt);
+    Seeknpt(npt);
+    printf("%f\n", Getnpt());
+  }
 
-  double npt = atof(time);
 }
 
 void RTPSender::SetPause(void){
@@ -186,6 +203,74 @@ return 1;
 
 }
 
+double RTPSender::Getnpt(void){
+  return pcrs.size() > _curtpn ? pcrs[_curtpn]: 0.0;
+}
+
+
+bool RTPSender::Seeknpt(double npt){
+  if (npt < 0){
+    if (_curtpn >= pcrs.size())
+      return false;
+    npt = pcrs[_curtpn];
+  }
+  else {
+    auto it = iframe.lower_bound(npt);
+    if (it != iframe.begin())
+      it--;
+    npt = it->first;
+    _curtpn = it->second;
+    printf("npt: %f, %f\n", npt, _curtpn);
+    int res = _tsr->seek(188 * _curtpn, SEEK_SET);
+  }
+
+  gettimeofday(&_starttime, NULL);
+  _starttime.tv_sec -= (int)npt;
+  _starttime.tv_usec -= (npt - (int)npt) * 1000000;
+
+  if (_starttime.tv_usec <0){
+    _starttime.tv_usec += 1000000;
+    _starttime.tv_sec -= 1;
+  }
+  return true;
+}
+
+int RTPSender::Getframe(unsigned char *buf){
+  if (pcrs.size() <= _curtpn){
+    _curtpn = 0;
+    return -1;
+  }
+  double npt = pcrs[_curtpn];
+  timeval playtime;
+  playtime.tv_sec = _starttime.tv_sec + (int) npt;
+  playtime.tv_usec = _starttime.tv_usec + (npt - (int)npt)*1000000;
+
+  if (playtime.tv_usec >= 1000000){
+    playtime.tv_usec -= 1000000;
+    playtime.tv_sec += 1;
+  }
+
+  timeval curttime;
+  gettimeofday(&curttime, NULL);
+  if (curttime.tv_sec < playtime.tv_sec || (curttime.tv_sec == playtime.tv_sec && curttime.tv_usec < playtime.tv_usec)){
+    return -2;
+  }
+
+  _curtpn++;
+  int res = _tsr->readn((char *)buf, 188);
+  if (res != 188){
+    printf("wrong");
+  }
+
+  int ret;
+  if (pcrs.size() <= _curtpn){
+    ret = 0;
+  } else {
+    ret = (pcrs[_curtpn] - pcrs[_curtpn - 1])*100000;
+  }
+  return ret;
+}
+
 ssize_t RTPSender::Readn(int fd, void *usrbuf, size_t n){
   size_t nleft = n;
   ssize_t nread;
@@ -209,7 +294,6 @@ ssize_t RTPSender::Readn(int fd, void *usrbuf, size_t n){
 
   return (n-nleft);
 }
-
 
 
 enum RecordType {
@@ -256,6 +340,7 @@ void RTPSender::Readtsx(void){
      fTo[10] = (unsigned char)(tpn>>24);
      fFrameSize = 11;
      */
+  printf("Start read\n");
   if (!Hasindex())
     return;
 
@@ -281,4 +366,5 @@ void RTPSender::Readtsx(void){
   }
   iframe[0.0] = 0;
   _dur = pcr;
+  printf("(debug) Duration %f\n", pcr);
 }

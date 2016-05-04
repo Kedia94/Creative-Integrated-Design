@@ -6,7 +6,8 @@ OBJ_DIR=obj
 
 SRC = RTSPServer.cpp \
       RTSPParser.cpp \
-      RTPSender.cpp
+      RTPSender.cpp \
+      Reader.cpp
 
 OBJ = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(SRC))
 
