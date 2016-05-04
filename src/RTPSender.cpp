@@ -161,7 +161,6 @@ void RTPSender::SetClient(char *ip, int port){
 }
 
 void RTPSender::SetPlay(char *time){
-  _play = true;
 
   double npt;
   //TODO: Set playtime to *time
@@ -173,6 +172,8 @@ void RTPSender::SetPlay(char *time){
     Seeknpt(npt);
     printf("%f\n", Getnpt());
   }
+
+  _play = true;
 
 }
 
@@ -352,14 +353,18 @@ void RTPSender::Readtsx(void){
     if (Readn(_xfd, (char*)buf, 11) == 0)
       break;
 
-    unsigned char recordtype = buf[0];
+    u_int8_t recordtype = buf[0];
     unsigned pcr_int = (unsigned)buf[3] + ((unsigned)buf[4]<<8) + ((unsigned)buf[5]<<16);
     unsigned pcr_frac = buf[6];
     pcr = pcr_int + pcr_frac / 256.0;
 
     unsigned tpn = *(unsigned*)(&buf[7]);
-    if (recordtype == RECORD_NAL_H264_IFRAME || recordtype == RECORD_NAL_H265_IFRAME)
-      iframe[pcr] = tpn;
+    if ((recordtype &0x80)!=0){
+      recordtype &=~0x80;
+      if (recordtype == 5 || recordtype == 11){ // h264: SPS, h265:VPS
+        iframe[pcr] = tpn;
+      }
+    }
 
     while (pcrs.size() <= tpn)
       pcrs.push_back(pcr);
