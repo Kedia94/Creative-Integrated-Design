@@ -30,6 +30,7 @@ class RTSPServer {
     RTSPServer(struct sockaddr_in, int, int);
     ~RTSPServer(void);
     RTSPServer* Create(int);
+	void Loadbalance(void);
     void Accept(void);
     static void *Loop(void *);
     char* Geturl(void);

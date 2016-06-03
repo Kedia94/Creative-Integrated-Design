@@ -46,6 +46,51 @@ RTSPServer* RTSPServer::Create(int port){
   return new RTSPServer(server_addr, listenfd, port);
 }
 
+void RTSPServer::Loadbalance(void){
+  sockaddr_in sa_cli;
+  socklen_t cli_addr_len = sizeof(sa_cli);
+  
+  int connfd;
+
+  int round_robin = 0;
+
+  while(true){
+    struct soc sock;
+    connfd = accept(_listenfd, (sockaddr*)&sa_cli, &cli_addr_len);
+
+    char clientIP[16];
+    char buf[32];
+
+    inet_ntop(AF_INET, &sa_cli.sin_addr.s_addr, clientIP, sizeof(clientIP));
+    snprintf(buf, sizeof(buf), "%s:%d", clientIP, ntohs(sa_cli.sin_port));
+
+    RTSPParser *rtsppar = new RTSPParser(clientIP);
+
+    printf("New client %s\n", buf);
+
+    mutx.lock();
+    _parser[buf] = rtsppar;
+    mutx.unlock();
+
+    if (connfd < 0) {
+      printf("accept() error\n");
+      usleep(1000*1000);
+      continue;
+    }
+
+	char read_buf[2048], write_buf[2048];
+	read(connfd, read_buf, sizeof(read_buf));
+	snprintf(write_buf, sizeof(write_buf), "%s",rtsppar->Redirect(read_buf,round_robin));
+	round_robin++;
+	round_robin %= 2;
+	printf("buf: %s\n", write_buf);
+
+	write(connfd, write_buf, strlen(write_buf));
+	memset(read_buf, 0, sizeof(read_buf));
+	memset(write_buf, 0, sizeof(write_buf));
+  }
+}
+
 void RTSPServer::Accept(void){
   sockaddr_in sa_cli;
   socklen_t cli_addr_len = sizeof(sa_cli);

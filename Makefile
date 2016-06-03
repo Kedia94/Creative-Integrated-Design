@@ -11,7 +11,7 @@ SRC = RTSPServer.cpp \
 
 OBJ = $(patsubst %.cpp, $(OBJ_DIR)/%.o, $(SRC))
 
-all: server
+all: server loadbalancer
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CC) $(CCFLAGS) -c -o $@ $<
@@ -19,6 +19,8 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 server: $(OBJ_DIR)/main.o $(OBJ)
 	$(CC) $(CCFLAGS) -o $@ $(OBJ_DIR)/main.o $(OBJ)
 
+loadbalancer: $(OBJ_DIR)/loadbalancer.o $(OBJ)
+	$(CC) $(CCFLAGS) -o $@ $(OBJ_DIR)/loadbalancer.o $(OBJ)
 
 clean:
-	rm -rf $(OBJ_DIR)/*.o server
+	rm -rf $(OBJ_DIR)/*.o server loadbalancer

@@ -14,6 +14,7 @@
 #include <sys/time.h>
 
 #include "RTPSender.h"
+#define SERVER_NUM 2
 
 class RTSPParser {
   public:
@@ -21,6 +22,7 @@ class RTSPParser {
     ~RTSPParser(void);
     void Createip();
     void Create(char *);
+	char *Redirect(char *,int);
     char *Renew(char *);
     char *Options(char *);
     char *Describe(char *);
@@ -56,5 +58,7 @@ class RTSPParser {
     char *_clientIP;
     bool _teardown;
     bool _complete;
+	const char * server_ip[SERVER_NUM] = { "192.168.153.129", "192.168.153.129" };
+	const int server_port[SERVER_NUM] = { 8552, 8550 };
 };
 
