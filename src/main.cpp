@@ -7,8 +7,7 @@ int main(int argc, char **argv){
 
   rtspserver = rtspserver->Create(port);
 
-  if (rtspserver == NULL) {
-    port = 8554;
+  for (port = 8554; (rtspserver == NULL) && (port <= 8754); port += 2) {
     rtspserver = rtspserver->Create(port);
   }
 

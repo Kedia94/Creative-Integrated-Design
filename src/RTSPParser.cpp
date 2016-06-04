@@ -94,7 +94,7 @@ printf("%s\n",_factor);
   return rtsp;
 }
 
-char *RTSPParser::Redirect(char *rtsp, int servernum){
+char *RTSPParser::Redirect(char *rtsp, const char *serverIp, const char *serverPort){
 	Create(rtsp);
 	printf("fileurl : %s\n",_fileurl);
 
@@ -106,9 +106,9 @@ char *RTSPParser::Redirect(char *rtsp, int servernum){
 
 	char buf[2048];
 	snprintf(buf, sizeof(buf), "RTSP/1.0 301 Moved Permanently\r\n"
-							   "Location: rtsp://%s:%d/%s\r\n\r\n",
-							   server_ip[servernum],
-							   server_port[servernum],
+							   "Location: rtsp://%s:%s/%s\r\n\r\n",
+							   serverIp,
+							   serverPort,
 							   filedir);
 	_ret = strdup(buf);
 

@@ -46,7 +46,7 @@ RTSPServer* RTSPServer::Create(int port){
   return new RTSPServer(server_addr, listenfd, port);
 }
 
-void RTSPServer::Loadbalance(void){
+void RTSPServer::Loadbalance(int servernum, char *server_ip[MAX_SERVER], char *server_port[MAX_SERVER]){
   sockaddr_in sa_cli;
   socklen_t cli_addr_len = sizeof(sa_cli);
   
@@ -80,9 +80,11 @@ void RTSPServer::Loadbalance(void){
 
 	char read_buf[2048], write_buf[2048];
 	read(connfd, read_buf, sizeof(read_buf));
-	snprintf(write_buf, sizeof(write_buf), "%s",rtsppar->Redirect(read_buf,round_robin));
+	const char * serverIp = server_ip[round_robin];
+	const char * serverPort = server_port[round_robin];
+	snprintf(write_buf, sizeof(write_buf), "%s",rtsppar->Redirect(read_buf,serverIp, serverPort));
 	round_robin++;
-	round_robin %= 2;
+	round_robin %= servernum;
 	printf("buf: %s\n", write_buf);
 
 	write(connfd, write_buf, strlen(write_buf));
