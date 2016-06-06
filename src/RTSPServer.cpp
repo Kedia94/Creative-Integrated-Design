@@ -6,6 +6,7 @@ RTSPServer::RTSPServer(struct sockaddr_in server_addr, int listenfd,  int port){
   _server_addr = server_addr;
   _listenfd = listenfd;
   _port = port;
+  _client = NULL;
   Createurl();
 }
 
@@ -52,7 +53,8 @@ void RTSPServer::Loadbalance(int servernum, char *server_ip[MAX_SERVER], char *s
   
   int connfd;
 
-  int round_robin = 0;
+  Server server;
+  server.makeNConnection(9000, servernum);
 
   while(true){
     struct soc sock;
@@ -80,11 +82,12 @@ void RTSPServer::Loadbalance(int servernum, char *server_ip[MAX_SERVER], char *s
 
 	char read_buf[2048], write_buf[2048];
 	read(connfd, read_buf, sizeof(read_buf));
-	const char * serverIp = server_ip[round_robin];
-	const char * serverPort = server_port[round_robin];
+	server.updateBandwidth();
+	int selected = server.selectServer();
+	const char * serverIp = server_ip[selected];
+	const char * serverPort = server_port[selected];
+	printf("%s %s\n",serverIp,serverPort);
 	snprintf(write_buf, sizeof(write_buf), "%s",rtsppar->Redirect(read_buf,serverIp, serverPort));
-	round_robin++;
-	round_robin %= servernum;
 	printf("buf: %s\n", write_buf);
 
 	write(connfd, write_buf, strlen(write_buf));
@@ -93,7 +96,7 @@ void RTSPServer::Loadbalance(int servernum, char *server_ip[MAX_SERVER], char *s
   }
 }
 
-void RTSPServer::Accept(void){
+void RTSPServer::Accept(){
   sockaddr_in sa_cli;
   socklen_t cli_addr_len = sizeof(sa_cli);
   
@@ -173,6 +176,7 @@ void *RTSPServer::Loop(void *newsock){
 //  memset(read_buf, 0, sizeof(read_buf));
 
   pthread_t thread;
+  bool wasPlaying = false;
   while ((n = read(connfd, read_buf, sizeof(read_buf))) > 0){
 
     snprintf(write_buf, sizeof(write_buf), "%s", rtsppar->Renew(read_buf));
@@ -191,6 +195,19 @@ void *RTSPServer::Loop(void *newsock){
     write(connfd, write_buf, strlen(write_buf));
     memset(read_buf, 0, sizeof(read_buf));
     memset(write_buf, 0, sizeof(write_buf));
+
+	if ((serv->_client != NULL) && (rtsppar->GetRTPS() != NULL)){
+		bool isPlaying = rtsppar->GetRTPS()->Getplay();
+		if (isPlaying^wasPlaying){
+			if(wasPlaying){
+				serv->_client->addBandwidth(-1);
+			}
+			else
+				serv->_client->addBandwidth(1);
+			wasPlaying = isPlaying;
+			serv->_client->reportBandwidth();
+		}
+	}
 
     if (rtsppar->Getteardown()){
       rtsppar->Setcomplete();
@@ -259,3 +276,11 @@ void RTSPServer::Addparser(char *key, RTSPParser *value){
   _parser[key] = value;
 }
 
+void RTSPServer::Makeclient(char * balancer_ip, char * balancer_port){
+	_client = new Client();
+	_client->makeConnection((const char *)balancer_ip, (const char *)balancer_port);
+}
+
+Client *RTSPServer::Getclient(){
+	return _client;
+}

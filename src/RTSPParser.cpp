@@ -150,7 +150,7 @@ char *RTSPParser::Describe(char *rtsp){
                                _version,
                                _cseq,
                                Getdate());
-    _teardown = true;
+    Setteardown();
     _ret = strdup(buf);
     return _ret;
     
@@ -237,7 +237,7 @@ char *RTSPParser::Teardown(char *rtsp){
                              _cseq,
                              Getdate());
 
-  _teardown = true;
+  Setteardown();
 
   _ret = strdup(buf);
 
@@ -443,6 +443,7 @@ RTPSender *RTSPParser::GetRTPS(void){
 }
 
 void RTSPParser::Setteardown(void){
+	_rtps->SetPause();
   _teardown = true;
 }
 

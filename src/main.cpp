@@ -20,7 +20,11 @@ int main(int argc, char **argv){
   printf("You can use following url to stream a video\n");
   printf("    %s<filename>\n", rtspserver->Geturl());
   printf("        We support .ts file with AVC, HEVC codec.\n");
-
+  printf("		  No Loadbalancing : ./server\n");
+  printf("		  Yes Loadbalancing : ./server <loadbalancer-ip> <loadbalancer-port>\n");
+	
+  if ( argc == 3)
+	  rtspserver->Makeclient(argv[1],argv[2]);
 
   printf("Accepting...\n");
   rtspserver->Accept();

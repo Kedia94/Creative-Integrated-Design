@@ -17,6 +17,8 @@
 #include <map>
 
 #include "RTSPParser.h"
+#include "Server.h"
+#include "Client.h"
 
 struct soc {
   int connfd;
@@ -37,14 +39,11 @@ class RTSPServer {
     static void* SendRTP(void *);
     std::map<std::string, RTSPParser*> Getparser(void);
     void Addparser(char *, RTSPParser *);
-
-    /*
-     * 미구현
-     */
-    void Servermanage();
-    void Redirect();
+	void Makeclient(char *,char *);
+	Client *Getclient();
 
   private:
+	Client *_client;
     struct sockaddr_in _server_addr;
     int _listenfd, _port;
     char *_url;
