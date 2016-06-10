@@ -8,6 +8,10 @@ RTSPParser::RTSPParser(char *clientIP){
   _clientIP = strdup(clientIP);
   _teardown = false;
   _complete = false;
+  char * h264 = "h264.ts";
+  char * h265 = "h265.ts";
+  _bitrate[h265] = 4000;
+  _bitrate[h264] = 800;
 }
 
 RTSPParser::~RTSPParser(void){

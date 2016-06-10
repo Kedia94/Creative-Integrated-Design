@@ -189,8 +189,6 @@ void *RTSPServer::Loop(void *newsock){
       return NULL;
     }
     
-//    printf("buf: %s\n", read_buf);
-
 
     write(connfd, write_buf, strlen(write_buf));
     memset(read_buf, 0, sizeof(read_buf));
@@ -198,12 +196,14 @@ void *RTSPServer::Loop(void *newsock){
 
 	if ((serv->_client != NULL) && (rtsppar->GetRTPS() != NULL)){
 		bool isPlaying = rtsppar->GetRTPS()->Getplay();
+		char * filedir = rtsppar->GetRTPS()->_filedir;
+		int bitrate = rtsppar->_bitrate[filedir];
 		if (isPlaying^wasPlaying){
 			if(wasPlaying){
-				serv->_client->addBandwidth(-1);
+				serv->_client->addBandwidth(-bitrate);
 			}
 			else
-				serv->_client->addBandwidth(1);
+				serv->_client->addBandwidth(bitrate);
 			wasPlaying = isPlaying;
 			serv->_client->reportBandwidth();
 		}

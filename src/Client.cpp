@@ -10,17 +10,12 @@ void Client::makeConnection(const char *server_ip, const char *server_port){
 		perror("ERROR opening client socket");
 		return;
 	}
-	printf("socket created\n");
 
 	struct sockaddr_in server_addr;
 	bzero((char *)&server_addr, sizeof(server_addr));
-	printf("before access\n");
 	server_addr.sin_family = AF_INET;
-	printf("before htons\n");
 	server_addr.sin_port = htons( atoi(server_port) );
-	printf("before inet_pton\n");
 	inet_pton(AF_INET, server_ip, &server_addr.sin_addr);
-	printf("server addr created\n");
 
 	if (connect(client_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
 		perror("ERROR connecting client socket to server socket");

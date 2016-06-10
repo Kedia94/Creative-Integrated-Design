@@ -51,6 +51,7 @@ class RTPSender {
 
     int Readts(unsigned char *);
     void Readtsx(void);
+	char * _filedir;
 
 
   private:

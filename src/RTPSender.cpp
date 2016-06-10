@@ -15,6 +15,7 @@ RTPSender::~RTPSender(void){
 }
 
 void RTPSender::Open(char *name){
+	_filedir = name;
   _fd = open(name, O_RDONLY);
   
   char xname[512];

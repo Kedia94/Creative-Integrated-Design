@@ -16,6 +16,17 @@
 #include "RTPSender.h"
 #define MAX_SERVER 100
 
+#include <map>
+
+using namespace std;
+struct cmp_str
+{
+   bool operator()(char const *a, char const *b)
+   {
+       return strcmp(a, b) < 0;
+   }
+};
+
 class RTSPParser {
   public:
     RTSPParser(char *);
@@ -46,6 +57,7 @@ class RTSPParser {
     RTPSender *GetRTPS(void);
     void Setcomplete(void);
     bool Getcomplete(void);
+	map <char *,int,cmp_str> _bitrate;
 
   
   private:
